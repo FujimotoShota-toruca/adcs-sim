@@ -1,1 +1,5 @@
 # .gitignore
+.venv
+output
+input/config.yaml
+exit_output/ext_config.yaml

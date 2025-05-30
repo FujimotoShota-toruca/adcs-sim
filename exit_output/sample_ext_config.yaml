@@ -1,0 +1,4 @@
+# 参考：Qiita@t_A_M_u「サービス修了するLINE Notifyの代わりにDiscordを使ってみた」(https://qiita.com/t_A_M_u/items/96b7cc73107984278fe1)
+discord:
+  token: your_discord_token
+  ch_id: your_ch_id
