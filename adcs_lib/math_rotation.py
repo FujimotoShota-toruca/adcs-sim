@@ -16,14 +16,59 @@ def dcm2euler(dcm):
     euler = np.array([psi, theta, phi])
     return euler
 
+# !参考：https://space-denpa.jp/2024/09/23/sinc-best-approx/
+# チェビシフ多項式による高次のsinc近似関数
+def _chebyshev_sinc(x):
+    coefficients = [1, 0, -1/6, 0, 1/120, 0, -1/5040, 0, 1/362880, 0, -1/39916800]
+    result = np.zeros_like(x)
+    for i, c in enumerate(coefficients):
+        result += c * x**i
+    return result
+
+# !参考：https://space-denpa.jp/2023/05/31/conversion-quaternion-rotvec/
+# チェビシフ近似関数を用いたsinc関数を用いた変換
+def to_Lie(quaternion):
+    """四元数から回転ベクトルへの変換"""
+    theta = 0
+    V = quaternion[0:3]
+    if quaternion[0] < 0:
+        theta = np.arcsin(np.linalg.norm(V))
+        rotvec = -2.0/_chebyshev_sinc(theta) * V
+    else :
+        theta = +np.arcsin(np.linalg.norm(V))
+        rotvec = +2.0/_chebyshev_sinc(theta) * V
+    return rotvec
+
+def dcm2rotvec(R):
+    """
+    回転行列 R (3x3) から回転ベクトル（角度 * 回転軸）を計算
+    """
+
+    # 回転角 θ を計算
+    trace = np.trace(R)
+    theta = np.arccos(np.clip((trace - 1) / 2, -1.0, 1.0))  # 数値安定性のためclip
+
+    if np.isclose(theta, 0):
+        # 無回転（角度ゼロ）
+        return np.zeros(3)
+
+    # 回転軸ベクトルの計算（ロドリゲスの公式より）
+    rx = R[2,1] - R[1,2]
+    ry = R[0,2] - R[2,0]
+    rz = R[1,0] - R[0,1]
+    axis = np.array([rx, ry, rz])
+    axis = axis / (2 * np.sin(theta))
+
+    # 回転ベクトル = 角度 × 回転軸
+    rotvec = theta * axis
+    return rotvec
+
 def dcm2quaternion(dcm):
     # calculate quaternion from DCM
-    q = np.zeros(4, dtype=float)
-    q[3] = 0.5 * np.sqrt(1 + dcm[0,0] + dcm[1,1] + dcm[2,2])
-    q[0] = 0.25 * (dcm[2,1] - dcm[1,2]) / q[3]
-    q[1] = 0.25 * (dcm[0,2] - dcm[2,0]) / q[3]
-    q[2] = 0.25 * (dcm[1,0] - dcm[0,1]) / q[3]
-    return q
+    r = dcm2rotvec(dcm) / 2
+    r_norm = np.linalg.norm(r)
+    V = _chebyshev_sinc(r_norm) * r
+    return np.array([V[0], V[1], V[2], np.cos(r_norm)])
 
 def euler2dcm(euler):
     phi   = euler[0] # Z axis Yaw
