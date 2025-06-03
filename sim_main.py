@@ -101,11 +101,14 @@ ff = np.array([0,0,0])
 
 sat_mag_sen_b = np.array([0, 0, 0])
 
-# 発生磁気モーメント平滑化
+# 発生磁気モーメント平滑化:(論文)
 inc = satellite.model.inclo
 kap = np.sqrt(1+3*(np.sin(inc)**2))
 D_mat = np.diag([(4-kap)/3, 1-(np.cos(inc)**2)/kap, ((4/kap)-1)/3])
 D_inv = np.linalg.inv(D_mat)
+# 出力平滑化フィルタ
+alpha = 0.01
+t_filterd = np.array([0.0, 0.0, 0.0])
 
 # 記録リスト
 ARRAY_KEY_NAMES = {
@@ -113,7 +116,7 @@ ARRAY_KEY_NAMES = {
     "err_vec": ["x", "y", "z"],
     "Quaternion_err": ["w", "x", "y", "z"],
     "angular_velocity": ["wx", "wy", "wz"],
-    "MTQ_vector": ["x", "y", "z"],
+    "mtq_output": ["x", "y", "z"],
     "gyro_ref": ["x", "y", "z"],
     "Quaternion_ref": ["w", "x", "y", "z"],
     "attitude_quaternion": ["w", "x", "y", "z"],
@@ -127,7 +130,8 @@ ARRAY_KEY_NAMES = {
     "sat_mag_sen": ["x", "y", "z"],
     "B_enu": ["x", "y", "z"],
     "B_ecef": ["x", "y", "z"],
-    "B_ECI": ["x", "y", "z"]
+    "B_ECI": ["x", "y", "z"],
+    "t_filterd": ["x", "y", "z"]
 }
 
 # ログリスト
@@ -190,6 +194,7 @@ for elapsed_time in range(total_step):
             'quaternion_ref': Quaternion_ref,
             'quaternion_i2b': attitude_quaternion,
             'control_torque': controal_torque,
+            't_filterd': t_filterd,
             'tp': tp,
             'td': td,
             'ff': ff,
@@ -237,17 +242,18 @@ for elapsed_time in range(total_step):
                 Quaternion_ref = - Quaternion_ref
             q_back = Quaternion_ref
             Quaternion_err = rotation.Quaternion_product(rotation.conj_quat(Quaternion_ref), (attitude_quaternion))
-            qe_vec = Quaternion_err[0:3]
+            qe_vec = np.sign(Quaternion_err[3]) * Quaternion_err[0:3]
             # !角速度
             gyro_ref = -np.abs(rad_sec) * y_axis # Eq(16-17)_DOI: 10.2322/tastj.16.441
             gyro_err = gyro_ref - angular_velocity
             J = inertia_inv
-            kp = 2.0e-6 * J
-            kd = 1.0e-2 * J
+            kp = 1.0e-7 * J
+            kd = 1.0e-3 * J
             tp = kp @ qe_vec
             td = kd @ gyro_err
             ff = attitude.skew(gyro_ref) @ inertia @ gyro_ref
-            t = tp + td #+ ff
+            t = tp + td #+ gra_trq#+ ff
+            t_filterd = adcs.lowpass_filter(t_filterd, t, alpha)
             # 普通のクロスプロダクト
             MTQ_vector = np.cross(sat_mag_sen, t) / (np.linalg.norm(sat_mag_sen)**2)
             # Eq(44)_DOI: 10.2322/tastj.16.441
@@ -255,7 +261,7 @@ for elapsed_time in range(total_step):
             #Quaternion Feedback"""
 
             # *磁気トルカの出力サチュレーション表現"""
-            MTQ_vector = adcs.discretize_and_limit_moment(MTQ_vector, 0.2, 10) # 理想の入力, 飽和値, 分割数
+            MTQ_vector = adcs.discretize_and_limit_moment(MTQ_vector, 0.2, 1) # 理想の入力, 飽和値, 分割数
             print(MTQ_vector , end =',')
             print(err_vec[2], end=' ')
             print(np.linalg.norm(angular_velocity), end=' ')
