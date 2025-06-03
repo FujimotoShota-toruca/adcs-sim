@@ -46,12 +46,12 @@ def quaternion_to_diff(q_diff):
 
     return angles_deg
 
-def bang_bang_bdot(_x):
+def bang_bang_bdot(_x, _MAX_MM):
                 if np.abs(_x) > 1.0e-12 :
                     if _x > 0:
-                        _x = 0.1
+                        _x = _MAX_MM
                     else:
-                        _x = -0.1
+                        _x = -_MAX_MM
                 else :
                     _x = 0
                 return _x
@@ -63,3 +63,17 @@ def generate_axis_vector_LVLH(_eci_position: np.ndarray[np.float64], _eci_veloci
     x_axis = np.cross(y_axis, z_axis)
     x_axis = x_axis / np.linalg.norm(x_axis)
     return x_axis, y_axis, z_axis
+
+def lowpass_filter(filtered_t: np.ndarray, t: np.ndarray, alpha: float) -> np.ndarray:
+    """
+    単純な指数移動平均（ローパスフィルタ）を適用する関数。
+
+    Parameters:
+        filtered_t (np.ndarray): 前回のフィルタ適用後のトルクベクトル（3次元）
+        t (np.ndarray): 現在の生のトルクベクトル（3次元）
+        alpha (float): フィルタ係数（0 < alpha < 1）。小さいほど平滑化が強い。
+
+    Returns:
+        np.ndarray: 新しくフィルタ適用されたトルクベクトル
+    """
+    return alpha * t + (1 - alpha) * filtered_t
