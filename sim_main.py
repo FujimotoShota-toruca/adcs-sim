@@ -28,11 +28,11 @@ import exit_output.influx_writer as influxDB
 #influx = influxDB.InfluxWriter()
 
 # 外部output用クラス(無くても動く:discord_bodの部分はコメントアウト推奨)
-ext_config = loader.load_config('.\\exit_output\\sample_ext_config.yaml')
-discord_token = ext_config['discord']['token']
-discord_ch = ext_config['discord']['ch_id']
+#ext_config = loader.load_config('.\\exit_output\\sample_ext_config.yaml')
+#discord_token = ext_config['discord']['token']
+#discord_ch = ext_config['discord']['ch_id']
 # sampleのところに入れてもいいし,直接トークンとチャンネルを書いてもいい
-discord_bot = discord.DiscordSendMessage(discord_token, discord_ch)
+#discord_bot = discord.DiscordSendMessage(discord_token, discord_ch)
 
 # シミュレーション条件読み込み
 config = input_if.load_config('.\\input\\sample_config.yaml')
@@ -147,7 +147,7 @@ for elapsed_time in range(total_step):
     # discord 通知
     progress = elapsed_time / total_step * 100
     message = f"Step {elapsed_time}/{total_step}（{progress:.1f}%）完了"
-    discord_bot.maybe_send_progress(message, interval_minutes=10)
+    #discord_bot.maybe_send_progress(message, interval_minutes=10)
 
     # 時刻更新
     sim_time = config.time.start + datetime.timedelta(seconds=elapsed_time*dt)
@@ -278,7 +278,7 @@ for elapsed_time in range(total_step):
     #print(attitude_quaternion)
     angular_velocity, attitude_quaternion = attitude.runge_kutta_quaternion(torque, angular_velocity, attitude_quaternion, inertia, inertia_inv, dt)
 
-discord_bot.send_message(f"Step {total_step}/{total_step} (100%)完了")
+#discord_bot.send_message(f"Step {total_step}/{total_step} (100%)完了")
 # CSVファイルにデータを書き込む
 # ファイル/フォルダ名等がコンフリクトしないように調整
 now = datetime.datetime.now()
@@ -291,4 +291,5 @@ flat_log = [output_if.flatten_record_named(r, ARRAY_KEY_NAMES) for r in raw_log]
 # pandas で保存
 df = pd.DataFrame(flat_log)
 df.to_csv(f_name, index=False)
-discord_bot.send_message('CSVファイルに保存しました\n結果を確認してください！')
+#discord_bot.send_message('CSVファイルに保存しました\n結果を確認してください！')
+print('CSVファイルに保存しました\n結果を確認してください！')
