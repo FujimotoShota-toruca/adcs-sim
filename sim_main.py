@@ -28,7 +28,7 @@ import exit_output.influx_writer as influxDB
 #influx = influxDB.InfluxWriter()
 
 # 外部output用クラス(無くても動く:discord_bodの部分はコメントアウト推奨)
-#ext_config = loader.load_config('.\\exit_output\\sample_ext_config.yaml')
+#ext_config = loader.load_config('.\\exit_output\\ext_config.yaml')
 #discord_token = ext_config['discord']['token']
 #discord_ch = ext_config['discord']['ch_id']
 # sampleのところに入れてもいいし,直接トークンとチャンネルを書いてもいい
@@ -107,7 +107,7 @@ kap = np.sqrt(1+3*(np.sin(inc)**2))
 D_mat = np.diag([(4-kap)/3, 1-(np.cos(inc)**2)/kap, ((4/kap)-1)/3])
 D_inv = np.linalg.inv(D_mat)
 # 出力平滑化フィルタ
-alpha = 0.01
+alpha = 0.5
 t_filterd = np.array([0.0, 0.0, 0.0])
 
 # 記録リスト
@@ -131,7 +131,7 @@ ARRAY_KEY_NAMES = {
     "B_enu": ["x", "y", "z"],
     "B_ecef": ["x", "y", "z"],
     "B_ECI": ["x", "y", "z"],
-    "t_filterd": ["x", "y", "z"]
+    "t": ["x", "y", "z"]
 }
 
 # ログリスト
@@ -194,7 +194,7 @@ for elapsed_time in range(total_step):
             'quaternion_ref': Quaternion_ref,
             'quaternion_i2b': attitude_quaternion,
             'control_torque': controal_torque,
-            't_filterd': t_filterd,
+            't': t_filterd,
             'tp': tp,
             'td': td,
             'ff': ff,
@@ -215,25 +215,19 @@ for elapsed_time in range(total_step):
     if count2 >= count2sec:
         count2 = dt # count reset
         if MTQ_con == True:
-            """
+            #"""
             # 制御期間コンフィギュレーション設定
             ##print("C")
             # B-dot
             #static = 1e6 * np.cross(sat_mag_sen, angular_velocity - np.array([0, 0, 0*np.deg2rad(10)]))
             static = 1e6 * np.cross(sat_mag_sen, angular_velocity)
             follow = 1e5 * (sat_mag_sen-sat_mag_sen_b) # 1e6
-
-            MTQ_vector = static # + static
-            #if(elapsed_time > total_step*0.1):
-                # MTQ_vector = (np.array([follow[0], follow[1], -0.2]) - static)/2
-            MTQ_vector = (np.array([0.2*follow[0], 0.2*follow[1], 0.2]))
-            #MTQ_vector = np.array([follow[0], follow[1], follow[2]]) 
             sat_mag_sen_b = sat_mag_sen
             
-            MTQ_vector = 2*np.array([adcs.bang_bang_bdot(follow[0]),adcs.bang_bang_bdot(follow[1]),(0.1)])
+            MTQ_vector = 2*np.array([adcs.bang_bang_bdot(follow[0], 0.1), adcs.bang_bang_bdot(follow[1], 0.1), adcs.bang_bang_bdot(follow[2], 0.1)])
             #"""
 
-            #"""Quaternion Feedback
+            """Quaternion Feedback
             # !Quaternion
             x_axis, y_axis, z_axis = adcs.generate_axis_vector_LVLH(eci_pos, eci_vel)
             dcm_eci2lvlh = np.array([x_axis, y_axis, z_axis]).T
@@ -247,13 +241,14 @@ for elapsed_time in range(total_step):
             gyro_ref = -np.abs(rad_sec) * y_axis # Eq(16-17)_DOI: 10.2322/tastj.16.441
             gyro_err = gyro_ref - angular_velocity
             J = inertia_inv
-            kp = 1.0e-7 * J
-            kd = 1.0e-3 * J
-            tp = kp @ qe_vec
-            td = kd @ gyro_err
+            kp = 1.0e-6
+            kd = 1.0e-4
+            tp = kp * qe_vec
+            td = kd * gyro_err
             ff = attitude.skew(gyro_ref) @ inertia @ gyro_ref
             t = tp + td #+ gra_trq#+ ff
-            t_filterd = adcs.lowpass_filter(t_filterd, t, alpha)
+            #t_filterd = adcs.lowpass_filter(t_filterd, t, alpha)
+            t_filterd = t
             # 普通のクロスプロダクト
             MTQ_vector = np.cross(sat_mag_sen, t) / (np.linalg.norm(sat_mag_sen)**2)
             # Eq(44)_DOI: 10.2322/tastj.16.441
@@ -261,7 +256,8 @@ for elapsed_time in range(total_step):
             #Quaternion Feedback"""
 
             # *磁気トルカの出力サチュレーション表現"""
-            MTQ_vector = adcs.discretize_and_limit_moment(MTQ_vector, 0.2, 1) # 理想の入力, 飽和値, 分割数
+            #MTQ_vector = adcs.discretize_and_limit_moment(MTQ_vector, 0.2, 1) # 理想の入力, 飽和値, 分割数
+            print(follow, end =',')
             print(MTQ_vector , end =',')
             print(err_vec[2], end=' ')
             print(np.linalg.norm(angular_velocity), end=' ')
