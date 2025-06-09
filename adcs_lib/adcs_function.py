@@ -47,14 +47,13 @@ def quaternion_to_diff(q_diff):
     return angles_deg
 
 def bang_bang_bdot(_x, _MAX_MM):
-                if np.abs(_x) > 1.0e-12 :
-                    if _x > 0:
-                        _x = -_MAX_MM
-                    else:
-                        _x = +_MAX_MM
-                else :
-                    _x = 0
-                return _x
+    sign = 0
+    if np.abs(_x) > 1e-7 :
+        if _x > 0:
+            sign = -1
+        else:
+            sign = +1
+    return sign* _MAX_MM
 
 def generate_axis_vector_LVLH(_eci_position: np.ndarray[np.float64], _eci_velocity: np.ndarray[np.float64]):
     z_axis = -_eci_position / np.linalg.norm(_eci_position)

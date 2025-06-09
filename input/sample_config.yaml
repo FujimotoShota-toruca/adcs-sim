@@ -9,7 +9,7 @@ time:
   step: 0.10         # [sec]
 
 initial_attitude_parameters:
-  angular_velocity:  [ 1., 1., 1. ]  # [rad/s]
+  angular_velocity:  [ 0., 0., 0. ]  # [rad/s]
   quaternion:        [ 0.0, 0.0, 0.0, 1.0 ]
 
 satellite_structure:

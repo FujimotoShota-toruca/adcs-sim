@@ -220,11 +220,11 @@ for elapsed_time in range(total_step):
             ##print("C")
             # B-dot
             #static = 1e6 * np.cross(sat_mag_sen, angular_velocity - np.array([0, 0, 0*np.deg2rad(10)]))
-            static = 1e6 * np.cross(sat_mag_sen, angular_velocity)
-            follow = 1e5 * (sat_mag_sen-sat_mag_sen_b) # 1e6
+            static = 1e5 * np.cross(sat_mag_sen, angular_velocity)
+            follow = 1e5 * (sat_mag_sen - sat_mag_sen_b) # 1e6
             sat_mag_sen_b = sat_mag_sen
             
-            MTQ_vector = 2*np.array([adcs.bang_bang_bdot(follow[0], 0.1), adcs.bang_bang_bdot(follow[1], 0.1), adcs.bang_bang_bdot(follow[2], 0.1)])
+            MTQ_vector = np.array([adcs.bang_bang_bdot(follow[0], 0.1), adcs.bang_bang_bdot(follow[1], 0.1), -0.1])
             #"""
 
             """Quaternion Feedback
@@ -257,7 +257,7 @@ for elapsed_time in range(total_step):
 
             # *磁気トルカの出力サチュレーション表現"""
             #MTQ_vector = adcs.discretize_and_limit_moment(MTQ_vector, 0.2, 1) # 理想の入力, 飽和値, 分割数
-            print(follow, end =',')
+            #print(follow, end =',')
             print(MTQ_vector , end =',')
             print(err_vec[2], end=' ')
             print(np.linalg.norm(angular_velocity), end=' ')
